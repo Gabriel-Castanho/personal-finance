@@ -24,14 +24,14 @@ def fetch_pluggy_endpoint(endpoint, api_key, params=None):
     return response.json().get("results", [])
 
 def upload_to_gcs(bucket_name, destination_blob_name, data):
-    """Faz o upload de um dicionário (JSON) para o Google Cloud Storage de forma correta."""
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
     
-    json_data = json.dumps(data, ensure_ascii=False, indent=2)
-    blob.upload_from_string(json_data, content_type='application/json')
-    print(f"Sucesso: Arquivo salvo em gs://{bucket_name}/{destination_blob_name}")
+    ndjson_data = "\n".join([json.dumps(item, ensure_ascii=False) for item in data])
+    
+    blob.upload_from_string(ndjson_data, content_type='application/json')
+    print(f"Sucesso: Arquivo NDJSON salvo em gs://{bucket_name}/{destination_blob_name}")
 
 def cloud_run_handler(request=None):
     client_id = os.environ.get("PLUGGY_CLIENT_ID")
