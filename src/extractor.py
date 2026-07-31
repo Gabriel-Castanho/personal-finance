@@ -63,7 +63,6 @@ def cloud_run_handler(request=None):
         for item_id in item_ids:
             print(f"\n--- Processando Item ID: {item_id} ---")
             
-            # 1. Transações
             try:
                 accounts_raw = fetch_pluggy_endpoint("accounts", api_key, params={"itemId": item_id, "type": "BANK"})
                 for account in accounts_raw:
@@ -73,6 +72,10 @@ def cloud_run_handler(request=None):
                     
                     transactions_raw = fetch_pluggy_endpoint("v2/transactions", api_key, params={"accountId": account_id})
                     for t in transactions_raw:
+                        payment_data = t.get("paymentData") or {}
+                        payer_data = payment_data.get("payer") or {}
+                        doc_data = payer_data.get("documentNumber") or {}
+
                         all_cleaned_transactions.append({
                             "transaction_id": t.get("id"),
                             "item_id": item_id,
@@ -80,10 +83,26 @@ def cloud_run_handler(request=None):
                             "bank_name": bank_name,
                             "date": t.get("date"),
                             "description": t.get("description"),
+                            "description_raw": t.get("descriptionRaw"),
                             "amount": t.get("amount"),
+                            "amount_in_account_currency": t.get("amountInAccountCurrency"),
+                            "currency_code": t.get("currencyCode"),
                             "type": t.get("type"),
+                            "operation_type": t.get("operationType"),
+                            "operation_type_additional_info": t.get("operationTypeAdditionalInfo"),
                             "category_id": t.get("categoryId"),
-                            "category_name": category_map.get(t.get("categoryId"), "Não Categorizado")
+                            "category_name": category_map.get(t.get("categoryId"), "Não Categorizado"),
+                            "status": t.get("status"),
+                            "balance": t.get("balance"),
+                            "provider_code": t.get("providerCode"),
+                            "provider_id": t.get("providerId"),
+                            "order_index": t.get("order"),
+                            "payment_method": payment_data.get("paymentMethod"),
+                            "payment_reason": payment_data.get("reason"),
+                            "payer_document_type": doc_data.get("type"),
+                            "payer_document_value": doc_data.get("value"),
+                            "created_at": t.get("createdAt"),
+                            "updated_at": t.get("updatedAt")
                         })
             except Exception as e:
                 print(f"Aviso: Erro ao puxar transações para o item {item_id}: {e}")
@@ -108,7 +127,6 @@ def cloud_run_handler(request=None):
             except Exception as e:
                 print(f"Aviso: Erro ao puxar investimentos para o item {item_id}: {e}")
 
-        # Salvando no Cloud Storage
         if all_cleaned_transactions:
             trans_file_name = f"pluggy_transactions/transactions_{timestamp}.json"
             upload_to_gcs(bucket_name, trans_file_name, all_cleaned_transactions)
