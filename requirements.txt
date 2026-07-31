@@ -1,15 +1,11 @@
-# Processamento de Dados
 pandas==2.2.0
 pyarrow==15.0.0
-
-# Conectores de Bases de Dados e ORM
 SQLAlchemy==2.0.25
 psycopg2-binary==2.9.9
 pymysql==1.1.0
 pyodbc==5.1.0
 requests==2.31.0
-
-# Integração com o Google Cloud
 google-cloud-storage==2.14.0
 google-cloud-bigquery==3.17.0
 db-dtypes==1.2.0
+python-dotenv==1.0.1
