@@ -24,10 +24,11 @@ def fetch_pluggy_endpoint(endpoint, api_key, params=None):
     return response.json().get("results", [])
 
 def upload_to_gcs(bucket_name, destination_blob_name, data):
-    """Faz o upload de um dicionário (JSON) para o Google Cloud Storage."""
+    """Faz o upload de um dicionário (JSON) para o Google Cloud Storage de forma correta."""
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
+    
     json_data = json.dumps(data, ensure_ascii=False, indent=2)
     blob.upload_from_string(json_data, content_type='application/json')
     print(f"Sucesso: Arquivo salvo em gs://{bucket_name}/{destination_blob_name}")
@@ -62,6 +63,7 @@ def cloud_run_handler(request=None):
         for item_id in item_ids:
             print(f"\n--- Processando Item ID: {item_id} ---")
             
+            # 1. Transações
             try:
                 accounts_raw = fetch_pluggy_endpoint("accounts", api_key, params={"itemId": item_id, "type": "BANK"})
                 for account in accounts_raw:
@@ -86,7 +88,7 @@ def cloud_run_handler(request=None):
             except Exception as e:
                 print(f"Aviso: Erro ao puxar transações para o item {item_id}: {e}")
 
-
+            # 2. Investimentos
             try:
                 print(f"Buscando investimentos para o Item ID: {item_id}")
                 investments_raw = fetch_pluggy_endpoint("investments", api_key, params={"itemId": item_id})
@@ -106,7 +108,7 @@ def cloud_run_handler(request=None):
             except Exception as e:
                 print(f"Aviso: Erro ao puxar investimentos para o item {item_id}: {e}")
 
-
+        # Salvando no Cloud Storage
         if all_cleaned_transactions:
             trans_file_name = f"pluggy_transactions/transactions_{timestamp}.json"
             upload_to_gcs(bucket_name, trans_file_name, all_cleaned_transactions)
@@ -116,11 +118,7 @@ def cloud_run_handler(request=None):
             upload_to_gcs(bucket_name, inv_file_name, all_cleaned_investments)
             
         print("\nProcesso de ETL concluído com sucesso!")
-        return {
-            "status": "success", 
-            "extracted_transactions": len(all_cleaned_transactions),
-            "extracted_investments": len(all_cleaned_investments)
-        }, 200
+        return {"status": "success"}, 200
         
     except Exception as e:
         print(f"Erro crítico na execução: {e}")
